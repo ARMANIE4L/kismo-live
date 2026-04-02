@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Manager Cloud</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .dashboard-card { border: none; border-radius: 20px; transition: transform 0.3s; }
+        .stat-value { font-size: 1.8rem; font-weight: 800; }
+        .sync-badge { font-size: 0.7rem; letter-spacing: 1px; }
+        .recent-item { border-left: 4px solid #0d6efd; background: white; margin-bottom: 8px; border-radius: 10px; }
+        .brand-text { color: #0d6efd; text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; }
+    </style>
+</head>
+<body class="pb-5">
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <small class="brand-text fw-bold" id="store_name">Loading Store...</small>
+            <h4 class="fw-bold mb-0">Live Dashboard</h4>
+            <span class="badge bg-success sync-badge text-uppercase">Live Connection</span>
+        </div>
+        <button onclick="location.reload()" class="btn btn-white shadow-sm rounded-circle">
+            <i class="fa-solid fa-rotate text-primary"></i>
+        </button>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6">
+            <div class="card dashboard-card bg-primary text-white p-3 shadow-sm">
+                <small class="opacity-75 text-uppercase fw-bold" style="font-size: 0.65rem;">Today's Sales</small>
+                <div class="stat-value" id="today_rev">₦0</div>
+                <small id="today_units" class="opacity-75">0 Units</small>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="card dashboard-card bg-dark text-white p-3 shadow-sm">
+                <small class="opacity-75 text-uppercase fw-bold" style="font-size: 0.65rem;">Total Debt</small>
+                <div class="stat-value text-warning" id="total_debt">₦0</div>
+                <small class="opacity-75">Money Outside</small>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="card dashboard-card bg-white p-3 shadow-sm border-start border-success border-5">
+                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Month to Date (MTD)</small>
+                <div class="stat-value text-success" id="monthly_total">₦0</div>
+            </div>
+        </div>
+    </div>
+
+    <h6 class="fw-bold mb-3"><i class="fa-solid fa-bolt-lightning text-warning me-2"></i>Recent Transactions</h6>
+    <div id="recent_list">
+        <p class="text-muted small text-center p-4">Loading activity...</p>
+    </div>
+
+    <p class="text-center text-muted mt-4" style="font-size: 0.75rem;">
+        Last updated at <span id="sync_time" class="fw-bold">--:--</span>
+    </p>
+</div>
+
+<script>
+    // --- SMART AUTO-DETECTION CODE ---
+    // This looks at your GitHub URL (e.g., /kismo-live/) and picks the store name automatically
+    const pathArray = window.location.pathname.split('/');
+    const repoName = pathArray[pathArray.length - 2] || pathArray[pathArray.length - 1];
+    
+    // Fallback logic: Use the URL ID if present, otherwise use the Repo Name
+    const urlParams = new URLSearchParams(window.location.search);
+    const storeID = urlParams.get('id') || repoName || 'default_store'; 
+
+    const firebaseURL = `https://shopmonitor-ceff5-default-rtdb.firebaseio.com/${storeID}.json`;
+
+    function loadData() {
+        fetch(firebaseURL)
+            .then(response => response.json())
+            .then(data => {
+                if (!data) return;
+
+                // Brand Name Update
+                document.getElementById('store_name').innerText = data.biz_name || "MY STORE";
+
+                // Stats Update
+                document.getElementById('today_rev').innerText = "₦" + Number(data.today_revenue || 0).toLocaleString();
+                document.getElementById('today_units').innerText = (data.today_units || 0) + " Units Sold Today";
+                document.getElementById('total_debt').innerText = "₦" + Number(data.total_debt || 0).toLocaleString();
+                document.getElementById('monthly_total').innerText = "₦" + Number(data.monthly_total || 0).toLocaleString();
+                document.getElementById('sync_time').innerText = data.last_sync || "--:--";
+
+                // List Update (Handles both Array and Object formats from Firebase)
+                let listHTML = "";
+                const activities = data.recent_activity ? Object.values(data.recent_activity) : [];
+                
+                if (activities.length > 0) {
+                    activities.forEach(order => {
+                        listHTML += `
+                            <div class="p-3 recent-item shadow-sm mb-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="fw-bold text-dark d-block">${order.item}</span>
+                                        <small class="text-primary fw-bold text-uppercase" style="font-size: 0.65rem;">
+                                            <i class="fa-solid fa-user me-1"></i> ${order.customer}
+                                        </small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="text-success fw-bold d-block">₦${Number(order.price).toLocaleString()}</span>
+                                        <span class="badge bg-light text-dark border p-1" style="font-size: 0.6rem;">${order.mode}</span>
+                                    </div>
+                                </div>
+                                <hr class="my-2 opacity-25">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted" style="font-size: 0.7rem;">Sold by: <strong>${order.staff}</strong></small>
+                                    <i class="fa-solid fa-circle-check text-success" style="font-size: 0.7rem;"></i>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    listHTML = "<div class='text-center p-5'><p class='text-muted'>No sales recorded today.</p></div>";
+                }
+                document.getElementById('recent_list').innerHTML = listHTML;
+            })
+            .catch(err => {
+                console.error("Connection Error:", err);
+            });
+    }
+
+    loadData();
+    setInterval(loadData, 60000); // Auto-refresh every 60 seconds
+</script>
+
+</body>
+</html>
