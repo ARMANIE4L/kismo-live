@@ -14,7 +14,12 @@
         .top-scroll { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
         .top-scroll::-webkit-scrollbar { display: none; }
         .mini-stat { background: white; border-radius: 12px; padding: 8px; border: 1px solid #eee; text-align: center; }
-        .low-stock-badge { position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; font-size: 0.6rem; padding: 4px 8px; border-radius: 10px; font-weight: bold; }
+        
+        /* Low Stock (Red) - Right Side */
+        .low-stock-badge { position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; font-size: 0.6rem; padding: 4px 8px; border-radius: 10px; font-weight: bold; z-index: 10; }
+        
+        /* Out of Stock (Black) - Left Side */
+        .out-stock-badge { position: absolute; top: -5px; left: -5px; background: #212529; color: white; font-size: 0.6rem; padding: 4px 8px; border-radius: 10px; font-weight: bold; z-index: 10; }
     </style>
 </head>
 <body class="pb-5">
@@ -35,6 +40,7 @@
                 <span class="fw-bold text-primary" id="inv_count">0</span>
             </div>
             <div id="low_stock_alert" class="low-stock-badge" style="display:none;">0 LOW</div>
+            <div id="out_stock_alert" class="out-stock-badge" style="display:none;">0 OUT</div>
         </div>
         <div class="col-4">
             <div class="mini-stat shadow-sm">
@@ -87,17 +93,19 @@
         fetch(firebaseURL).then(res => res.json()).then(data => {
             if (!data) return;
             
+            // Revenue & Debt
             document.getElementById('today_rev').innerText = "₦" + Number(data.today_revenue).toLocaleString();
             document.getElementById('cash_today').innerText = "₦" + Number(data.cash_today).toLocaleString();
             document.getElementById('trans_today').innerText = "₦" + Number(data.trans_today).toLocaleString();
             document.getElementById('total_debt').innerText = "₦" + Number(data.total_debt).toLocaleString();
             document.getElementById('sync_time').innerText = data.last_sync;
 
+            // Inventory Stats
             document.getElementById('inv_count').innerText = data.inventory_count;
             document.getElementById('cap_inv').innerText = "₦" + Math.round(data.capital_invested).toLocaleString();
             document.getElementById('shop_val').innerText = "₦" + Math.round(data.shop_value).toLocaleString();
 
-            // Low Stock Alert Logic
+            // Low Stock Alert (Red Badge)
             if(data.low_stock_count > 0) {
                 document.getElementById('low_stock_alert').innerText = data.low_stock_count + " LOW";
                 document.getElementById('low_stock_alert').style.display = "block";
@@ -105,6 +113,15 @@
                 document.getElementById('low_stock_alert').style.display = "none";
             }
 
+            // Out of Stock Alert (Black Badge)
+            if(data.out_of_stock_count > 0) {
+                document.getElementById('out_stock_alert').innerText = data.out_of_stock_count + " OUT";
+                document.getElementById('out_stock_alert').style.display = "block";
+            } else {
+                document.getElementById('out_stock_alert').style.display = "none";
+            }
+
+            // Top Profits
             let topHTML = "";
             (data.top_items || []).forEach((item, index) => {
                 topHTML += `<div class="badge bg-white text-dark border p-2 shadow-sm" style="border-radius:10px; min-width:140px;">
@@ -114,6 +131,7 @@
             });
             document.getElementById('top_profit_list').innerHTML = topHTML;
 
+            // Recent Transactions
             let listHTML = "";
             (data.recent_activity || []).forEach(order => {
                 listHTML += `<div class="p-3 recent-item shadow-sm">
