@@ -13,12 +13,14 @@
         .recent-item { border-left: 4px solid #0d6efd; background: white; margin-bottom: 12px; border-radius: 15px; }
         .top-scroll { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
         .top-scroll::-webkit-scrollbar { display: none; }
+        /* Style for the Surgical Math Mini-Cards */
+        .mini-stat { background: white; border-radius: 12px; padding: 8px; border: 1px solid #eee; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     </style>
 </head>
 <body class="pb-5">
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <small class="text-primary fw-bold text-uppercase" id="store_name">KISMO MOBILE</small>
             <h4 class="fw-bold mb-0">Live Dashboard</h4>
@@ -26,12 +28,33 @@
         <button onclick="loadData()" class="btn btn-white shadow-sm rounded-circle"><i class="fa-solid fa-rotate text-primary"></i></button>
     </div>
 
+    <div class="row g-2 mb-4">
+        <div class="col-4">
+            <div class="mini-stat">
+                <small class="text-muted fw-bold d-block" style="font-size: 0.55rem;">ITEMS</small>
+                <span class="fw-bold text-primary" id="inv_count">0</span>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="mini-stat">
+                <small class="text-muted fw-bold d-block" style="font-size: 0.55rem;">CAPITAL</small>
+                <span class="fw-bold text-dark" style="font-size: 0.7rem;" id="cap_inv">₦0</span>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="mini-stat">
+                <small class="text-muted fw-bold d-block" style="font-size: 0.55rem;">VALUE</small>
+                <span class="fw-bold text-success" style="font-size: 0.7rem;" id="shop_val">₦0</span>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-3 mb-4">
         <div class="col-6">
             <div class="card dashboard-card bg-primary text-white p-3 shadow-sm">
                 <small class="opacity-75 fw-bold" style="font-size: 0.65rem;">TODAY'S REVENUE</small>
                 <div class="stat-value" id="today_rev">₦0</div>
-                <small id="today_units" class="opacity-75" style="font-size: 0.7rem;">0 Units</small>
+                <small id="today_units" class="opacity-75" style="font-size: 0.7rem;">0 Units Sold Today</small>
             </div>
         </div>
         <div class="col-6">
@@ -58,11 +81,19 @@
     function loadData() {
         fetch(firebaseURL).then(res => res.json()).then(data => {
             if (!data) return;
+
+            // Basic Stats
             document.getElementById('today_rev').innerText = "₦" + Number(data.today_revenue).toLocaleString();
-            document.getElementById('today_units').innerText = data.today_units + " Units Sold Today";
+            document.getElementById('today_units').innerText = (data.today_units || 0) + " Units Sold Today";
             document.getElementById('total_debt').innerText = "₦" + Number(data.total_debt).toLocaleString();
             document.getElementById('sync_time').innerText = data.last_sync;
 
+            // Surgical Math Updates (Items, Capital, Shop Value)
+            document.getElementById('inv_count').innerText = data.inventory_count || 0;
+            document.getElementById('cap_inv').innerText = "₦" + Math.round(data.capital_invested || 0).toLocaleString();
+            document.getElementById('shop_val').innerText = "₦" + Math.round(data.shop_value || 0).toLocaleString();
+
+            // Render Top Profit Badges
             let topHTML = "";
             (data.top_items || []).forEach((item, index) => {
                 topHTML += `<div class="badge bg-white text-dark border p-2 shadow-sm" style="border-radius:10px; min-width:140px;">
@@ -72,6 +103,7 @@
             });
             document.getElementById('top_profit_list').innerHTML = topHTML;
 
+            // Render Recent Sales (Restored Staff and Mode)
             let listHTML = "";
             (data.recent_activity || []).forEach(order => {
                 listHTML += `<div class="p-3 recent-item shadow-sm">
@@ -82,18 +114,22 @@
                         </div>
                         <div class="text-end">
                             <span class="text-success fw-bold d-block">₦${Number(order.price).toLocaleString()}</span>
-                            <span class="badge bg-light text-dark border" style="font-size:0.6rem;">${order.mode}</span>
+                            <span class="badge bg-light text-dark border" style="font-size:0.6rem;">${order.mode || 'N/A'}</span>
                         </div>
                     </div>
                     <hr class="my-2 opacity-25">
-                    <small class="text-primary fw-bold" style="font-size:0.7rem;">Sold by: ${order.sold_by}</small>
+                    <small class="text-primary fw-bold" style="font-size:0.7rem;">Sold by: ${order.sold_by || 'Admin'}</small>
                 </div>`;
             });
             document.getElementById('recent_list').innerHTML = listHTML;
         });
     }
+
+    // Initial load
     loadData();
-    setInterval(loadData, 30000);
+
+    // Auto-refresh every 3 seconds for that live feel
+    setInterval(loadData, 3000);
 </script>
 </body>
 </html>
