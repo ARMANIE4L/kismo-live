@@ -3,8 +3,8 @@
   "short_name": "Kimso",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#f4f7f6",
-  "theme_color": "#0d6efd",
+  "background_color": "#f8f9fa",
+  "theme_color": "#f8f9fa",
   "icons": [
     {
       "src": "logo.png",
