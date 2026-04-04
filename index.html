@@ -3,35 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kismo Cloud Monitor</title>
+    <title>Kimso Cloud Monitor</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
-        .dashboard-card { border: none; border-radius: 20px; }
+        .dashboard-card { border: none; border-radius: 20px; position: relative; }
         .stat-value { font-size: 1.3rem; font-weight: 800; }
         .recent-item { border-left: 4px solid #0d6efd; background: white; margin-bottom: 12px; border-radius: 15px; }
         .top-scroll { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
         .top-scroll::-webkit-scrollbar { display: none; }
+        .mini-stat { background: white; border-radius: 12px; padding: 8px; border: 1px solid #eee; text-align: center; }
+        
+        /* Low Stock (Red) - Right Side */
+        .low-stock-badge { position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; font-size: 0.5rem; padding: 4px 8px; border-radius: 10px; font-weight: bold; z-index: 10; }
+        
+        /* Out of Stock (Black) - Left Side */
+        .out-stock-badge { position: absolute; top: -5px; left: -5px; background: #212529; color: white; font-size: 0.5rem; padding: 4px 8px; border-radius: 10px; font-weight: bold; z-index: 10; }
     </style>
 </head>
 <body class="pb-5">
 
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <small class="text-primary fw-bold text-uppercase" id="store_name">KISMO MOBILE</small>
+            <small class="text-primary fw-bold text-uppercase">KIMSO MOBILE</small>
             <h4 class="fw-bold mb-0">Live Dashboard</h4>
         </div>
         <button onclick="loadData()" class="btn btn-white shadow-sm rounded-circle"><i class="fa-solid fa-rotate text-primary"></i></button>
     </div>
 
+    <div class="row g-2 mb-4">
+        <div class="col-4 position-relative">
+            <div class="mini-stat shadow-sm">
+                <small class="text-muted fw-bold d-block" style="font-size: 0.55rem;">ITEMS</small>
+                <span class="fw-bold text-primary" id="inv_count">0</span>
+            </div>
+            <div id="low_stock_alert" class="low-stock-badge" style="display:none;">0 LOW</div>
+            <div id="out_stock_alert" class="out-stock-badge" style="display:none;">0 OUT</div>
+        </div>
+        <div class="col-4">
+            <div class="mini-stat shadow-sm">
+                <small class="text-muted fw-bold d-block" style="font-size: 0.55rem;">CAPITAL</small>
+                <span class="fw-bold text-dark" style="font-size: 0.7rem;" id="cap_inv">₦0</span>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="mini-stat shadow-sm">
+                <small class="text-muted fw-bold d-block" style="font-size: 0.55rem;">VALUE</small>
+                <span class="fw-bold text-success" style="font-size: 0.7rem;" id="shop_val">₦0</span>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-3 mb-4">
         <div class="col-6">
             <div class="card dashboard-card bg-primary text-white p-3 shadow-sm">
-                <small class="opacity-75 fw-bold" style="font-size: 0.65rem;">TODAY'S REVENUE</small>
+                <small class="opacity-75 fw-bold" style="font-size: 0.6rem;">CASH TODAY</small>
                 <div class="stat-value" id="today_rev">₦0</div>
-                <small id="today_units" class="opacity-75" style="font-size: 0.7rem;">0 Units</small>
+                <hr class="my-1 opacity-25">
+                <div style="font-size: 0.55rem;" class="d-flex justify-content-between">
+                    <span>Cash: <b id="cash_today">₦0</b></span>
+                    <span>Trf: <b id="trans_today">₦0</b></span>
+                </div>
             </div>
         </div>
         <div class="col-6">
@@ -43,10 +77,10 @@
         </div>
     </div>
 
-    <h6 class="fw-bold mb-3">Top 5 Monthly Profits</h6>
+    <h6 class="fw-bold mb-3 small">Top 5 Monthly Profits</h6>
     <div id="top_profit_list" class="top-scroll mb-4"></div>
 
-    <h6 class="fw-bold mb-3">Recent Transactions</h6>
+    <h6 class="fw-bold mb-3 small">Recent Transactions</h6>
     <div id="recent_list"></div>
 
     <p class="text-center text-muted mt-4 small">Last sync: <span id="sync_time" class="fw-bold">--:--</span></p>
@@ -58,11 +92,36 @@
     function loadData() {
         fetch(firebaseURL).then(res => res.json()).then(data => {
             if (!data) return;
+            
+            // Revenue & Debt
             document.getElementById('today_rev').innerText = "₦" + Number(data.today_revenue).toLocaleString();
-            document.getElementById('today_units').innerText = data.today_units + " Units Sold Today";
+            document.getElementById('cash_today').innerText = "₦" + Number(data.cash_today).toLocaleString();
+            document.getElementById('trans_today').innerText = "₦" + Number(data.trans_today).toLocaleString();
             document.getElementById('total_debt').innerText = "₦" + Number(data.total_debt).toLocaleString();
             document.getElementById('sync_time').innerText = data.last_sync;
 
+            // Inventory Stats
+            document.getElementById('inv_count').innerText = data.inventory_count;
+            document.getElementById('cap_inv').innerText = "₦" + Math.round(data.capital_invested).toLocaleString();
+            document.getElementById('shop_val').innerText = "₦" + Math.round(data.shop_value).toLocaleString();
+
+            // Low Stock Alert (Red Badge)
+            if(data.low_stock_count > 0) {
+                document.getElementById('low_stock_alert').innerText = data.low_stock_count + " LOW";
+                document.getElementById('low_stock_alert').style.display = "block";
+            } else {
+                document.getElementById('low_stock_alert').style.display = "none";
+            }
+
+            // Out of Stock Alert (Black Badge)
+            if(data.out_of_stock_count > 0) {
+                document.getElementById('out_stock_alert').innerText = data.out_of_stock_count + " OUT";
+                document.getElementById('out_stock_alert').style.display = "block";
+            } else {
+                document.getElementById('out_stock_alert').style.display = "none";
+            }
+
+            // Top Profits
             let topHTML = "";
             (data.top_items || []).forEach((item, index) => {
                 topHTML += `<div class="badge bg-white text-dark border p-2 shadow-sm" style="border-radius:10px; min-width:140px;">
@@ -72,17 +131,18 @@
             });
             document.getElementById('top_profit_list').innerHTML = topHTML;
 
+            // Recent Transactions
             let listHTML = "";
             (data.recent_activity || []).forEach(order => {
                 listHTML += `<div class="p-3 recent-item shadow-sm">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <span class="fw-bold d-block">${order.item}</span>
-                            <small class="text-muted">${order.customer}</small>
+                            <span class="fw-bold d-block small">${order.item}</span>
+                            <small class="text-muted" style="font-size:0.7rem;">${order.customer}</small>
                         </div>
                         <div class="text-end">
-                            <span class="text-success fw-bold d-block">₦${Number(order.price).toLocaleString()}</span>
-                            <span class="badge bg-light text-dark border" style="font-size:0.6rem;">${order.mode}</span>
+                            <span class="text-success fw-bold d-block small">₦${Number(order.price).toLocaleString()}</span>
+                            <span class="badge bg-light text-dark border" style="font-size:0.5rem;">${order.mode}</span>
                         </div>
                     </div>
                     <hr class="my-2 opacity-25">
@@ -93,7 +153,7 @@
         });
     }
     loadData();
-    setInterval(loadData, 30000);
+    setInterval(loadData, 10000); // 10 seconds refresh
 </script>
 </body>
 </html>
